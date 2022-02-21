@@ -1,15 +1,22 @@
 package cn.ommiao.dragtodelete
 
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -47,8 +54,8 @@ import com.google.accompanist.insets.ProvideWindowInsets
 import com.google.accompanist.insets.navigationBarsPadding
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
-val baseScale = 1.0f
-val activeScale = 1.25f
+const val baseScale = 1.0f
+const val activeScale = 1.25f
 
 val statusBarColor = Color(0xFFF1F1F1)
 
@@ -75,12 +82,43 @@ fun Page() {
                     MyAppBar(statusBarHeight)
                     ItemsList(dragState)
                 }
+
+                TrashBin(dragState)
                 ActiveItem(dragState)
                 Text(
                     text = "activeItem: index -> ${dragState.value.index}, state -> ${dragState.value::class.java.simpleName}",
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+private fun BoxScope.TrashBin(dragState: MutableState<DragState>) {
+    AnimatedVisibility(
+        visible = dragState.value is DragState.Dragging,
+        enter = slideInVertically(
+            { it }
+        ),
+        exit = slideOutVertically(
+            { it }
+        ),
+        modifier = Modifier.Companion
+            .align(Alignment.BottomCenter)
+    ) {
+        Box(
+            modifier = Modifier
+                .height(100.dp)
+                .fillMaxWidth()
+                .background(Color.Gray)
+        ) {
+            Text(
+                text = "垃圾桶",
+                color = Color.White,
+                modifier = Modifier.align(Alignment.Center)
+            )
         }
     }
 }
