@@ -1,11 +1,8 @@
 package cn.ommiao.dragtodelete
 
 import android.util.Log
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.animateOffsetAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -41,7 +38,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import cn.ommiao.dragtodelete.data.Item
 import cn.ommiao.dragtodelete.data.itemsList
 import cn.ommiao.dragtodelete.extension.toColor
@@ -50,7 +46,9 @@ import com.google.accompanist.insets.LocalWindowInsets
 import com.google.accompanist.insets.ProvideWindowInsets
 import com.google.accompanist.insets.navigationBarsPadding
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import kotlinx.coroutines.delay
+
+val baseScale = 1.0f
+val activeScale = 1.25f
 
 val statusBarColor = Color(0xFFF1F1F1)
 
@@ -78,6 +76,10 @@ fun Page() {
                     ItemsList(dragState)
                 }
                 ActiveItem(dragState)
+                Text(
+                    text = "activeItem: index -> ${dragState.value.index}, state -> ${dragState.value::class.java.simpleName}",
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
         }
     }
@@ -85,35 +87,38 @@ fun Page() {
 
 @Composable
 private fun ActiveItem(dragState: MutableState<DragState>) {
-    val activeIndex = dragState.value.index
-    val scale = animateFloatAsState(
+    val animateScale = animateFloatAsState(
         targetValue = when (dragState.value) {
-            is DragState.Dragging -> 1.25f
-            is DragState.DraggingToIdle -> 1.0f
-            DragState.Idle -> 1.0f
-            is DragState.IdleToDragging -> 1.25f
-        },
-        animationSpec = tween(300)
+            DragState.Idle,
+            is DragState.DraggingToIdle -> baseScale
+            is DragState.Dragging,
+            is DragState.IdleToDragging -> activeScale
+        }
     )
-    if (activeIndex > -1) {
-        Log.d(TAG, "ActiveItem: scale -> ${scale.value}")
-        val activeItem = itemsList[activeIndex]
-        val animateOffsetX = animateIntAsState(
-            targetValue = dragState.value.offset.x.toInt()
+    if (dragState.value != DragState.Idle) {
+        val activeItem = itemsList[dragState.value.index]
+        val animateOffset = animateIntOffsetAsState(
+            targetValue = IntOffset(
+                dragState.value.offset.x.toInt(),
+                dragState.value.offset.y.toInt()
+            ),
+            finishedListener = {
+                if (dragState.value is DragState.DraggingToIdle) {
+                    dragState.value = DragState.Idle
+                }
+            }
         )
-        val animateOffsetY = animateIntAsState(
-            targetValue = dragState.value.offset.y.toInt()
+        val targetOffset = IntOffset(
+            if (dragState.value is DragState.DraggingToIdle) animateOffset.value.x else dragState.value.offset.x.toInt(),
+            if (dragState.value is DragState.DraggingToIdle) animateOffset.value.y else dragState.value.offset.y.toInt()
         )
         Item(
             color = activeItem.color.toColor(),
             modifier = Modifier
                 .offset {
-                    IntOffset(
-                        if (dragState.value is DragState.DraggingToIdle) animateOffsetX.value else dragState.value.offset.x.toInt(),
-                        if (dragState.value is DragState.DraggingToIdle) animateOffsetY.value else dragState.value.offset.y.toInt()
-                    )
+                    targetOffset
                 }
-                .scale(scale.value)
+                .scale(animateScale.value)
         )
     }
 }
