@@ -3,10 +3,9 @@ package cn.ommiao.dragtodelete
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntOffsetAsState
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -43,6 +42,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.consumeAllChanges
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -68,7 +68,9 @@ const val TAG = "log-ommiao"
 
 val itemSize = 56.dp
 
-val globalPositionsMap = mutableMapOf<Item, Offset>()
+val itemsPositionsMap = mutableMapOf<Item, Offset>()
+
+var trashBinPosition = Offset(Float.MAX_VALUE, Float.MAX_VALUE)
 
 @Composable
 fun Page() {
@@ -108,12 +110,17 @@ private fun BoxScope.TrashBin(dragState: MutableState<DragState>) {
         modifier = Modifier.Companion
             .align(Alignment.BottomCenter)
     ) {
+        val isDraggingInTrashBinBounds = dragState.value.offset.y > trashBinPosition.y
+        val animateBackground = animateColorAsState(targetValue = if (isDraggingInTrashBinBounds) Color.Red else Color.Gray )
         Box(
             modifier = Modifier
                 .navigationBarsPadding()
                 .height(88.dp)
                 .fillMaxWidth()
-                .background(Color.Gray)
+                .background(animateBackground.value)
+                .onGloballyPositioned {
+                    trashBinPosition = it.positionInWindow()
+                }
         ) {
             Icon(
                 Icons.Default.Delete,
@@ -182,7 +189,7 @@ private fun ItemsList(dragState: MutableState<DragState>) {
                     color = item.color.toColor(),
                     modifier = Modifier
                         .onGloballyPositioned {
-                            globalPositionsMap += item to it.positionInWindow()
+                            itemsPositionsMap += item to it.positionInWindow()
                         }
                         .pointerInput(Unit) {
                             detectDragGesturesAfterLongPress(
@@ -190,14 +197,14 @@ private fun ItemsList(dragState: MutableState<DragState>) {
                                     Log.d(TAG, "onDragStart: $it")
                                     dragState.value = DragState.IdleToDragging(
                                         index = index,
-                                        offset = globalPositionsMap[item] ?: Offset(0f, 0f)
+                                        offset = itemsPositionsMap[item] ?: Offset(0f, 0f)
                                     )
                                 },
                                 onDragEnd = {
                                     Log.d(TAG, "onDragEnd")
                                     dragState.value = DragState.DraggingToIdle(
                                         index = index,
-                                        offset = globalPositionsMap[item] ?: Offset(0f, 0f)
+                                        offset = itemsPositionsMap[item] ?: Offset(0f, 0f)
                                     )
                                 },
                                 onDragCancel = {
