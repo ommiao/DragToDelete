@@ -23,8 +23,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.GridCells
 import androidx.compose.foundation.lazy.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
@@ -47,6 +50,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import cn.ommiao.dragtodelete.data.Item
 import cn.ommiao.dragtodelete.data.itemsList
+import cn.ommiao.dragtodelete.extension.slideInFromBottom
+import cn.ommiao.dragtodelete.extension.slideOutToBottom
 import cn.ommiao.dragtodelete.extension.toColor
 import cn.ommiao.dragtodelete.ui.theme.DragToDeleteTheme
 import com.google.accompanist.insets.LocalWindowInsets
@@ -82,7 +87,6 @@ fun Page() {
                     MyAppBar(statusBarHeight)
                     ItemsList(dragState)
                 }
-
                 TrashBin(dragState)
                 ActiveItem(dragState)
                 Text(
@@ -99,24 +103,22 @@ fun Page() {
 private fun BoxScope.TrashBin(dragState: MutableState<DragState>) {
     AnimatedVisibility(
         visible = dragState.value is DragState.Dragging,
-        enter = slideInVertically(
-            { it }
-        ),
-        exit = slideOutVertically(
-            { it }
-        ),
+        enter = slideInFromBottom(),
+        exit = slideOutToBottom(),
         modifier = Modifier.Companion
             .align(Alignment.BottomCenter)
     ) {
         Box(
             modifier = Modifier
-                .height(100.dp)
+                .navigationBarsPadding()
+                .height(88.dp)
                 .fillMaxWidth()
                 .background(Color.Gray)
         ) {
-            Text(
-                text = "垃圾桶",
-                color = Color.White,
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = "delete",
+                tint = Color.White,
                 modifier = Modifier.align(Alignment.Center)
             )
         }
