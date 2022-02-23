@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -61,6 +62,7 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 const val baseScale = 1.0f
 const val activeScale = 1.25f
+const val dismissScale = 0f
 
 val statusBarColor = Color(0xFFF1F1F1)
 
@@ -104,14 +106,15 @@ fun Page() {
 @Composable
 private fun BoxScope.TrashBin(dragState: MutableState<DragState>) {
     AnimatedVisibility(
-        visible = dragState.value is DragState.Dragging,
+        visible = dragState.value is DragState.Dragging || dragState.value is DragState.DraggingToDelete,
         enter = slideInFromBottom(),
         exit = slideOutToBottom(),
         modifier = Modifier.Companion
             .align(Alignment.BottomCenter)
     ) {
         val isDraggingInTrashBinBounds = dragState.value.offset.y > trashBinPosition.y
-        val animateBackground = animateColorAsState(targetValue = if (isDraggingInTrashBinBounds) Color.Red else Color.Gray )
+        val animateBackground =
+            animateColorAsState(targetValue = if (isDraggingInTrashBinBounds) Color.Red else Color.Gray)
         Box(
             modifier = Modifier
                 .navigationBarsPadding()
@@ -140,6 +143,15 @@ private fun ActiveItem(dragState: MutableState<DragState>) {
             is DragState.DraggingToIdle -> baseScale
             is DragState.Dragging,
             is DragState.IdleToDragging -> activeScale
+            is DragState.DraggingToDelete -> dismissScale
+        },
+        finishedListener = {
+            if (dragState.value is DragState.DraggingToDelete) {
+                val deleteItem = itemsList[dragState.value.index]
+                itemsPositionsMap.remove(deleteItem)
+                itemsList.remove(deleteItem)
+                dragState.value = DragState.Idle
+            }
         }
     )
     if (dragState.value != DragState.Idle) {
@@ -180,47 +192,58 @@ private fun ItemsList(dragState: MutableState<DragState>) {
     ) {
         val activeIndex = dragState.value.index
         items(itemsList.size) { index ->
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.alpha(if (activeIndex == index) 0f else 1f)
-            ) {
-                val item = itemsList[index]
-                Item(
-                    color = item.color.toColor(),
-                    modifier = Modifier
-                        .onGloballyPositioned {
-                            itemsPositionsMap += item to it.positionInWindow()
-                        }
-                        .pointerInput(Unit) {
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = {
-                                    Log.d(TAG, "onDragStart: $it")
-                                    dragState.value = DragState.IdleToDragging(
-                                        index = index,
-                                        offset = itemsPositionsMap[item] ?: Offset(0f, 0f)
-                                    )
-                                },
-                                onDragEnd = {
-                                    Log.d(TAG, "onDragEnd")
-                                    dragState.value = DragState.DraggingToIdle(
-                                        index = index,
-                                        offset = itemsPositionsMap[item] ?: Offset(0f, 0f)
-                                    )
-                                },
-                                onDragCancel = {
-                                    Log.d(TAG, "onDragCancel")
-                                }
-                            ) { change, dragAmount ->
-                                dragState.value =
-                                    DragState.Dragging(
-                                        index = index,
-                                        offset = dragAmount + dragState.value.offset
-                                    )
-                                change.consumeAllChanges()
-                                Log.d(TAG, "onDrag: $dragAmount")
+            key(itemsList[index].color) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.alpha(if (activeIndex == index) 0f else 1f)
+                ) {
+                    val item = itemsList[index]
+                    Item(
+                        color = item.color.toColor(),
+                        modifier = Modifier
+                            .onGloballyPositioned {
+                                itemsPositionsMap += item to it.positionInWindow()
                             }
-                        }
-                )
+                            .pointerInput(Unit) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = {
+                                        Log.d(TAG, "onDragStart: $it")
+                                        dragState.value = DragState.IdleToDragging(
+                                            index = index,
+                                            offset = itemsPositionsMap[item] ?: Offset(0f, 0f)
+                                        )
+                                    },
+                                    onDragEnd = {
+                                        Log.d(TAG, "onDragEnd")
+                                        val isDraggingInTrashBinBounds =
+                                            dragState.value.offset.y > trashBinPosition.y
+                                        if (isDraggingInTrashBinBounds) {
+                                            dragState.value = DragState.DraggingToDelete(
+                                                index = index,
+                                                offset = dragState.value.offset
+                                            )
+                                        } else {
+                                            dragState.value = DragState.DraggingToIdle(
+                                                index = index,
+                                                offset = itemsPositionsMap[item] ?: Offset(0f, 0f)
+                                            )
+                                        }
+                                    },
+                                    onDragCancel = {
+                                        Log.d(TAG, "onDragCancel")
+                                    }
+                                ) { change, dragAmount ->
+                                    dragState.value =
+                                        DragState.Dragging(
+                                            index = index,
+                                            offset = dragAmount + dragState.value.offset
+                                        )
+                                    change.consumeAllChanges()
+                                    Log.d(TAG, "onDrag: $dragAmount")
+                                }
+                            }
+                    )
+                }
             }
         }
     }
@@ -270,5 +293,8 @@ sealed class DragState(open val index: Int, open val offset: Offset) {
         DragState(index, offset)
 
     data class DraggingToIdle(override val index: Int, override val offset: Offset) :
+        DragState(index, offset)
+
+    data class DraggingToDelete(override val index: Int, override val offset: Offset) :
         DragState(index, offset)
 }
