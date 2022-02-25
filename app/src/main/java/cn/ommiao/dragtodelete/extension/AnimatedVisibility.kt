@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 @Composable
 fun slideInFromBottom(): EnterTransition {
     return slideInVertically(
-        { it }
+        initialOffsetY = { it }
     )
 }
 
@@ -19,6 +19,6 @@ fun slideInFromBottom(): EnterTransition {
 @Composable
 fun slideOutToBottom(): ExitTransition {
     return slideOutVertically(
-        { it }
+        targetOffsetY = { it }
     )
 }

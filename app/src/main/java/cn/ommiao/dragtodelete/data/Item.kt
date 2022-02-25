@@ -1,12 +1,14 @@
 package cn.ommiao.dragtodelete.data
 
+import androidx.compose.runtime.mutableStateListOf
+
 data class Item(
     val color: String,
     val title: String,
     val content: String
 )
 
-val itemsList = mutableListOf(
+val itemsList = mutableStateListOf(
     Item("ef5350", "Red", "red red red"),
     Item("ec407a", "Pink", "pink pink pink"),
     Item("ab47bc", "Purple", "purple purple purple"),
