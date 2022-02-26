@@ -151,6 +151,8 @@ private fun ActiveItem(dragState: MutableState<DragState>) {
                 itemsPositionsMap.remove(deleteItem)
                 itemsList.remove(deleteItem)
                 dragState.value = DragState.Idle
+            } else if (dragState.value is DragState.DraggingToIdle) {
+                dragState.value = DragState.Idle
             }
         }
     )
